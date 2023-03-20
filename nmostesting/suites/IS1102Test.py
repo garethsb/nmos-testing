@@ -17,6 +17,7 @@ from .. import TestHelper
 import time
 import re
 from .. import nmosTestingComplexCompare
+from ..IS04Utils import IS04Utils
 
 COMPAT_API_KEY = "streamcompatibility"
 NODE_API_KEY = "node"
@@ -261,6 +262,119 @@ class IS1102Test(GenericTest):
         if numerator == 88200:
             return {"numerator": 44100}
         return "sample_rate not valid"
+
+    def test_00_00(self, test):
+        "Example of using NMOSUtils.compare_constraint_sets"""
+
+        # List of two constraint sets
+        a = [{
+                "urn:x-nmos:cap:meta:enabled": True,
+                "urn:x-nmos:cap:meta:preference": 0,
+                "urn:x-nmos:cap:format:frame_width": {
+                    "minimum": 37,
+                    "maximum": 57,
+                    "enum": [37, 42, 57]
+                },
+                "urn:x-nmos:cap:format:grain_rate": {
+                    "minimum": {"numerator": 25, "denominator": 1},
+                    "maximum": {"numerator": 50, "denominator": 1},
+                    "enum": [{"numerator": 25, "denominator": 1},
+                             {"numerator": 30000, "denominator": 1001},
+                             {"numerator": 50, "denominator": 1}]
+                }
+            }, {
+                "urn:x-nmos:cap:format:foo": {
+                    "enum": ["bar", "baz", "qux"]
+                }
+            }
+        ]
+
+        # Equivalent list of constraint sets
+        # (a) sets ordered differently
+        # (b) enum values ordered differently
+        # (c) relying on default 'meta' values
+        # (d) relying on default rational denominator
+        # (e) having rationals not in lowest form
+        b = [{
+                "urn:x-nmos:cap:format:foo": {
+                    "enum": ["qux", "baz", "bar"]
+                }
+            }, {
+                "urn:x-nmos:cap:format:frame_width": {
+                    "maximum": 57,
+                    "minimum": 37,
+                    "enum": [42, 37, 57]
+                },
+                "urn:x-nmos:cap:format:grain_rate": {
+                    "maximum": {"numerator": 50},
+                    "minimum": {"numerator": 50, "denominator": 2},
+                    "enum": [{"numerator": 30000, "denominator": 1001},
+                             {"numerator": 50, "denominator": 2},
+                             {"numerator": 50}]
+                }
+            }
+        ]
+
+        # Things not viewed as equivalent that you might expect to be
+        # (a) different 'meta:label' (would be easy to implement ignoring 'meta:label')
+        # (b) disabled constraint sets with different constraints
+        #     (would be easy to implement ignoring disabled ones)
+        # (c) including unnecessary enum values, i.e. duplicates or less than minimum or greater than maximum
+        #     (would be pretty easy to implement removing these)
+        # (d) having constraint sets which make up the same union (harder)
+
+        if not IS04Utils.compare_constraint_sets(a, b):
+            return test.FAIL("Boooooo")
+        return test.PASS("Wooooo")
+
+    def test_00_01(self, test):
+        "Example of using NMOSUtils.make_sampling"
+        RGB = [
+                {
+                    "width": 2048,
+                    "bit_depth": 8,
+                    "name": "R",
+                    "height": 1080
+                },
+                {
+                    "width": 2048,
+                    "bit_depth": 8,
+                    "name": "G",
+                    "height": 1080
+                },
+                {
+                    "width": 2048,
+                    "bit_depth": 8,
+                    "name": "B",
+                    "height": 1080
+                }
+            ]
+        YCbCr_4_2_2 = [
+                {
+                    "width": 1920,
+                    "bit_depth": 10,
+                    "name": "Y",
+                    "height": 1080
+                },
+                {
+                    "width": 960,
+                    "bit_depth": 10,
+                    "name": "Cb",
+                    "height": 1080
+                },
+                {
+                    "width": 960,
+                    "bit_depth": 10,
+                    "name": "Cr",
+                    "height": 1080
+                }
+            ]
+
+        if IS04Utils.make_sampling(RGB) != "RGB":
+            return test.FAIL("Boooooo")
+        if IS04Utils.make_sampling(YCbCr_4_2_2) != "YCbCr-4:2:2":
+            return test.FAIL("Boooooo")
+        return test.PASS("Wooooo")
 
     def test_02_00(self, test):
         "Reset active constraints of all senders"
